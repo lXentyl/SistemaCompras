@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Unidades de Medida</h2>
+    <a href="{{ url_for('nueva_unidad') }}" class="btn btn-primary">Nueva Unidad</a>
+  </div>
+
+  <table class="table table-striped table-bordered">
+    <thead class="table-dark">
+      <tr>
+        <th>ID</th>
+        <th>Descripción</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in unidades %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.descripcion }}</td>
+        <td>{{ u.estado }}</td>
+        <td>
+          <a href="{{ url_for('editar_unidad', id=u.id) }}" class="btn btn-warning btn-sm">Editar</a>
+          <a href="{{ url_for('eliminar_unidad', id=u.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar unidad?')">Eliminar</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

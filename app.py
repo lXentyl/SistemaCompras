@@ -2,13 +2,13 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from datetime import timedelta
 
-app = Flask(__name__)  # <--- Define app PRIMERO
+app = Flask(__name__) 
 
-# 🔐 Configuración de sesión (esto va después de app)
+
 app.secret_key = 'clave-ultra-secreta-123'
 app.permanent_session_lifetime = timedelta(minutes=30)
 
-# 🔌 Conexión a MySQL desde XAMPP
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/sistema'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -49,6 +49,27 @@ def validar_cedula(cedula: str) -> bool:
 
     resultado = (10 - (suma % 10)) % 10
     return resultado == verificador
+
+# MODELO: Unidades de medida
+class Unidad(db.Model):
+    __tablename__ = 'unidades'
+    id = db.Column(db.Integer, primary_key=True)
+    descripcion = db.Column(db.String(50), nullable=False)
+    estado = db.Column(db.Enum('Activo', 'Inactivo'), nullable=False)
+
+# MODELO: Articulos
+class Articulo(db.Model):
+    __tablename__ = 'articulos'
+    id = db.Column(db.Integer, primary_key=True)
+    descripcion = db.Column(db.String(100), nullable=False)
+    marca = db.Column(db.String(50), nullable=False)
+    unidad_id = db.Column(db.Integer, db.ForeignKey('unidades.id'), nullable=False)
+    existencia = db.Column(db.Integer, nullable=False)
+    estado = db.Column(db.Enum('Activo', 'Inactivo'), nullable=False)
+
+    unidad = db.relationship('Unidad', backref='articulos')
+
+
 
 # MODELO: Usuario
 class Usuario(db.Model):
@@ -145,6 +166,106 @@ def eliminar_proveedor(id):
     db.session.delete(proveedor)
     db.session.commit()
     return redirect(url_for('listar_proveedores'))
+
+@app.route('/unidades')
+def listar_unidades():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    unidades = Unidad.query.all()
+    return render_template('unidades_list.html', unidades=unidades)
+
+@app.route('/unidades/nuevo', methods=['GET', 'POST'])
+def nueva_unidad():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        descripcion = request.form['descripcion']
+        estado = request.form['estado']
+        nueva = Unidad(descripcion=descripcion, estado=estado)
+        db.session.add(nueva)
+        db.session.commit()
+        return redirect(url_for('listar_unidades'))
+    return render_template('unidades_form.html', unidad=None)
+
+@app.route('/unidades/editar/<int:id>', methods=['GET', 'POST'])
+def editar_unidad(id):
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    unidad = Unidad.query.get_or_404(id)
+    if request.method == 'POST':
+        unidad.descripcion = request.form['descripcion']
+        unidad.estado = request.form['estado']
+        db.session.commit()
+        return redirect(url_for('listar_unidades'))
+    return render_template('unidades_form.html', unidad=unidad)
+
+@app.route('/unidades/eliminar/<int:id>')
+def eliminar_unidad(id):
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    unidad = Unidad.query.get_or_404(id)
+    db.session.delete(unidad)
+    db.session.commit()
+    return redirect(url_for('listar_unidades'))
+
+@app.route('/articulos')
+def listar_articulos():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    articulos = Articulo.query.all()
+    return render_template('articulos_list.html', articulos=articulos)
+
+@app.route('/articulos/nuevo', methods=['GET', 'POST'])
+def nuevo_articulo():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    unidades = Unidad.query.all()
+    if request.method == 'POST':
+        descripcion = request.form['descripcion']
+        marca = request.form['marca']
+        unidad_id = request.form['unidad_id']
+        existencia = request.form['existencia']
+        estado = request.form['estado']
+
+        nuevo = Articulo(
+            descripcion=descripcion,
+            marca=marca,
+            unidad_id=unidad_id,
+            existencia=existencia,
+            estado=estado
+        )
+        db.session.add(nuevo)
+        db.session.commit()
+        return redirect(url_for('listar_articulos'))
+
+    return render_template('articulos_form.html', articulo=None, unidades=unidades)
+
+@app.route('/articulos/editar/<int:id>', methods=['GET', 'POST'])
+def editar_articulo(id):
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    articulo = Articulo.query.get_or_404(id)
+    unidades = Unidad.query.all()
+    if request.method == 'POST':
+        articulo.descripcion = request.form['descripcion']
+        articulo.marca = request.form['marca']
+        articulo.unidad_id = request.form['unidad_id']
+        articulo.existencia = request.form['existencia']
+        articulo.estado = request.form['estado']
+        db.session.commit()
+        return redirect(url_for('listar_articulos'))
+    return render_template('articulos_form.html', articulo=articulo, unidades=unidades)
+
+@app.route('/articulos/eliminar/<int:id>')
+def eliminar_articulo(id):
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    articulo = Articulo.query.get_or_404(id)
+    db.session.delete(articulo)
+    db.session.commit()
+    return redirect(url_for('listar_articulos'))
+
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

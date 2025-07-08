@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>{{ 'Editar' if articulo else 'Nuevo' }} Artículo</h2>
+  <form method="POST" class="mt-3">
+    <div class="mb-3">
+      <label class="form-label">Descripción</label>
+      <input type="text" class="form-control" name="descripcion" value="{{ articulo.descripcion if articulo else '' }}" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Marca</label>
+      <input type="text" class="form-control" name="marca" value="{{ articulo.marca if articulo else '' }}" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Unidad de Medida</label>
+      <select class="form-select" name="unidad_id" required>
+        {% for unidad in unidades %}
+        <option value="{{ unidad.id }}" {% if articulo and articulo.unidad_id == unidad.id %}selected{% endif %}>{{ unidad.descripcion }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Existencia</label>
+      <input type="number" class="form-control" name="existencia" value="{{ articulo.existencia if articulo else 0 }}" min="0" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Estado</label>
+      <select class="form-select" name="estado" required>
+        <option value="Activo" {% if articulo and articulo.estado == 'Activo' %}selected{% endif %}>Activo</option>
+        <option value="Inactivo" {% if articulo and articulo.estado == 'Inactivo' %}selected{% endif %}>Inactivo</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-success">Guardar</button>
+    <a href="{{ url_for('listar_articulos') }}" class="btn btn-secondary">Cancelar</a>
+  </form>
+{% endblock %}
