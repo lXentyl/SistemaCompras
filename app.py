@@ -86,6 +86,8 @@ class Usuario(db.Model):
 def index():
     return redirect(url_for('listar_departamentos'))
 
+# --------- RUTA DEPARTAMENTOS ---------
+
 @app.route('/departamentos')
 def listar_departamentos():
     departamentos = Departamento.query.all()
@@ -119,6 +121,8 @@ def eliminar_departamento(id):
     db.session.commit()
     return redirect(url_for('listar_departamentos'))
 
+# --------- RUTA PROVEEDORES ---------
+
 @app.route('/proveedores')
 def listar_proveedores():
     proveedores = Proveedor.query.all()
@@ -133,12 +137,12 @@ def nuevo_proveedor():
         nombre_comercial = request.form['nombre_comercial']
         estado = request.form['estado']
 
-        # ⛔ Aquí se valida
+ 
         if not validar_cedula(cedula_rnc):
             error = "La cédula ingresada no es válida."
             return render_template('proveedores_form.html', proveedor=None, error=error)
 
-        # ✅ Si es válida, guarda
+
         nuevo = Proveedor(
             cedula_rnc=cedula_rnc,
             nombre_comercial=nombre_comercial,
@@ -166,6 +170,8 @@ def eliminar_proveedor(id):
     db.session.delete(proveedor)
     db.session.commit()
     return redirect(url_for('listar_proveedores'))
+
+# --------- RUTA UNIDADES ---------
 
 @app.route('/unidades')
 def listar_unidades():
@@ -207,6 +213,8 @@ def eliminar_unidad(id):
     db.session.delete(unidad)
     db.session.commit()
     return redirect(url_for('listar_unidades'))
+
+# --------- RUTA ARTICULOS ---------
 
 @app.route('/articulos')
 def listar_articulos():
@@ -266,6 +274,7 @@ def eliminar_articulo(id):
     return redirect(url_for('listar_articulos'))
 
 
+# --------- RUTA LOGIN Y VERIFICACION CEDULA ---------
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
