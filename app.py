@@ -30,6 +30,27 @@ class Proveedor(db.Model):
     nombre_comercial = db.Column(db.String(100), nullable=False)
     estado = db.Column(db.Enum('Activo', 'Inactivo'), nullable=False)
 
+def validar_cedula(cedula: str) -> bool:
+    cedula = cedula.replace("-", "").strip()
+
+    if len(cedula) != 11 or not cedula.isdigit():
+        return False
+
+    verificador = int(cedula[-1])
+    multiplicadores = [1, 2] * 5
+    suma = 0
+
+    for i in range(10):
+        digito = int(cedula[i])
+        producto = digito * multiplicadores[i]
+        if producto >= 10:
+            producto = (producto // 10) + (producto % 10)
+        suma += producto
+
+    resultado = (10 - (suma % 10)) % 10
+    return resultado == verificador
+
+# MODELO: Usuario
 class Usuario(db.Model):
     __tablename__ = 'usuarios'
     id = db.Column(db.Integer, primary_key=True)
@@ -84,11 +105,24 @@ def listar_proveedores():
 
 @app.route('/proveedores/nuevo', methods=['GET', 'POST'])
 def nuevo_proveedor():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
     if request.method == 'POST':
         cedula_rnc = request.form['cedula_rnc']
         nombre_comercial = request.form['nombre_comercial']
         estado = request.form['estado']
-        nuevo = Proveedor(cedula_rnc=cedula_rnc, nombre_comercial=nombre_comercial, estado=estado)
+
+        # ⛔ Aquí se valida
+        if not validar_cedula(cedula_rnc):
+            error = "La cédula ingresada no es válida."
+            return render_template('proveedores_form.html', proveedor=None, error=error)
+
+        # ✅ Si es válida, guarda
+        nuevo = Proveedor(
+            cedula_rnc=cedula_rnc,
+            nombre_comercial=nombre_comercial,
+            estado=estado
+        )
         db.session.add(nuevo)
         db.session.commit()
         return redirect(url_for('listar_proveedores'))
