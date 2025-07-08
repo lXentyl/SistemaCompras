@@ -11,5 +11,4 @@
 3. Importa el archivo `sistema.sql` que viene incluido
 4. Ejecuta la aplicación:
 
-```bash
-python app.py
+
