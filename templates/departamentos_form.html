@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>{{ 'Editar' if departamento else 'Nuevo' }} Departamento</h2>
+  <form method="POST" class="mt-3">
+    <div class="mb-3">
+      <label class="form-label">Nombre</label>
+      <input type="text" class="form-control" name="nombre" value="{{ departamento.nombre if departamento else '' }}" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Estado</label>
+      <select class="form-select" name="estado" required>
+        <option value="Activo" {% if departamento and departamento.estado == 'Activo' %}selected{% endif %}>Activo</option>
+        <option value="Inactivo" {% if departamento and departamento.estado == 'Inactivo' %}selected{% endif %}>Inactivo</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-success">Guardar</button>
+    <a href="{{ url_for('listar_departamentos') }}" class="btn btn-secondary">Cancelar</a>
+  </form>
+{% endblock %}
