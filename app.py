@@ -2,27 +2,24 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from datetime import timedelta
 
-app = Flask(__name__) 
-
+app = Flask(__name__)
 
 app.secret_key = 'clave-ultra-secreta-123'
 app.permanent_session_lifetime = timedelta(minutes=30)
-
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/sistema'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+# MODELOS
 
-# MODELO: Departamento
 class Departamento(db.Model):
     __tablename__ = 'departamentos'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     estado = db.Column(db.Enum('Activo', 'Inactivo'), nullable=False)
 
-# MODELO: Proveedor 
 class Proveedor(db.Model):
     __tablename__ = 'proveedores'
     id = db.Column(db.Integer, primary_key=True)
@@ -30,34 +27,12 @@ class Proveedor(db.Model):
     nombre_comercial = db.Column(db.String(100), nullable=False)
     estado = db.Column(db.Enum('Activo', 'Inactivo'), nullable=False)
 
-def validar_cedula(cedula: str) -> bool:
-    cedula = cedula.replace("-", "").strip()
-
-    if len(cedula) != 11 or not cedula.isdigit():
-        return False
-
-    verificador = int(cedula[-1])
-    multiplicadores = [1, 2] * 5
-    suma = 0
-
-    for i in range(10):
-        digito = int(cedula[i])
-        producto = digito * multiplicadores[i]
-        if producto >= 10:
-            producto = (producto // 10) + (producto % 10)
-        suma += producto
-
-    resultado = (10 - (suma % 10)) % 10
-    return resultado == verificador
-
-# MODELO: Unidades de medida
 class Unidad(db.Model):
     __tablename__ = 'unidades'
     id = db.Column(db.Integer, primary_key=True)
     descripcion = db.Column(db.String(50), nullable=False)
     estado = db.Column(db.Enum('Activo', 'Inactivo'), nullable=False)
 
-# MODELO: Articulos
 class Articulo(db.Model):
     __tablename__ = 'articulos'
     id = db.Column(db.Integer, primary_key=True)
@@ -66,35 +41,53 @@ class Articulo(db.Model):
     unidad_id = db.Column(db.Integer, db.ForeignKey('unidades.id'), nullable=False)
     existencia = db.Column(db.Integer, nullable=False)
     estado = db.Column(db.Enum('Activo', 'Inactivo'), nullable=False)
-
     unidad = db.relationship('Unidad', backref='articulos')
 
-
-
-# MODELO: Usuario
 class Usuario(db.Model):
     __tablename__ = 'usuarios'
     id = db.Column(db.Integer, primary_key=True)
     usuario = db.Column(db.String(50), nullable=False)
     clave = db.Column(db.String(100), nullable=False)
 
+# VALIDACION CEDULA
 
+def validar_cedula(cedula: str) -> bool:
+    cedula = cedula.replace("-", "").strip()
+    if len(cedula) != 11 or not cedula.isdigit():
+        return False
+    verificador = int(cedula[-1])
+    multiplicadores = [1, 2] * 5
+    suma = 0
+    for i in range(10):
+        digito = int(cedula[i])
+        producto = digito * multiplicadores[i]
+        if producto >= 10:
+            producto = (producto // 10) + (producto % 10)
+        suma += producto
+    resultado = (10 - (suma % 10)) % 10
+    return resultado == verificador
 
-# ---------- RUTAS CRUD ----------
+# RUTA PRINCIPAL
 
 @app.route('/')
 def index():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
     return redirect(url_for('listar_departamentos'))
 
-# --------- RUTA DEPARTAMENTOS ---------
+# CRUD DEPARTAMENTOS
 
 @app.route('/departamentos')
 def listar_departamentos():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
     departamentos = Departamento.query.all()
     return render_template('departamentos_list.html', departamentos=departamentos)
 
 @app.route('/departamentos/nuevo', methods=['GET', 'POST'])
 def nuevo_departamento():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
     if request.method == 'POST':
         nombre = request.form['nombre']
         estado = request.form['estado']
@@ -106,6 +99,8 @@ def nuevo_departamento():
 
 @app.route('/departamentos/editar/<int:id>', methods=['GET', 'POST'])
 def editar_departamento(id):
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
     departamento = Departamento.query.get_or_404(id)
     if request.method == 'POST':
         departamento.nombre = request.form['nombre']
@@ -116,15 +111,19 @@ def editar_departamento(id):
 
 @app.route('/departamentos/eliminar/<int:id>')
 def eliminar_departamento(id):
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
     departamento = Departamento.query.get_or_404(id)
     db.session.delete(departamento)
     db.session.commit()
     return redirect(url_for('listar_departamentos'))
 
-# --------- RUTA PROVEEDORES ---------
+# CRUD PROVEEDORES
 
 @app.route('/proveedores')
 def listar_proveedores():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
     proveedores = Proveedor.query.all()
     return render_template('proveedores_list.html', proveedores=proveedores)
 
@@ -136,18 +135,10 @@ def nuevo_proveedor():
         cedula_rnc = request.form['cedula_rnc']
         nombre_comercial = request.form['nombre_comercial']
         estado = request.form['estado']
-
- 
         if not validar_cedula(cedula_rnc):
             error = "La cédula ingresada no es válida."
             return render_template('proveedores_form.html', proveedor=None, error=error)
-
-
-        nuevo = Proveedor(
-            cedula_rnc=cedula_rnc,
-            nombre_comercial=nombre_comercial,
-            estado=estado
-        )
+        nuevo = Proveedor(cedula_rnc=cedula_rnc, nombre_comercial=nombre_comercial, estado=estado)
         db.session.add(nuevo)
         db.session.commit()
         return redirect(url_for('listar_proveedores'))
@@ -155,6 +146,8 @@ def nuevo_proveedor():
 
 @app.route('/proveedores/editar/<int:id>', methods=['GET', 'POST'])
 def editar_proveedor(id):
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
     proveedor = Proveedor.query.get_or_404(id)
     if request.method == 'POST':
         proveedor.cedula_rnc = request.form['cedula_rnc']
@@ -166,12 +159,14 @@ def editar_proveedor(id):
 
 @app.route('/proveedores/eliminar/<int:id>')
 def eliminar_proveedor(id):
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
     proveedor = Proveedor.query.get_or_404(id)
     db.session.delete(proveedor)
     db.session.commit()
     return redirect(url_for('listar_proveedores'))
 
-# --------- RUTA UNIDADES ---------
+# CRUD UNIDADES
 
 @app.route('/unidades')
 def listar_unidades():
@@ -214,7 +209,7 @@ def eliminar_unidad(id):
     db.session.commit()
     return redirect(url_for('listar_unidades'))
 
-# --------- RUTA ARTICULOS ---------
+# CRUD ARTICULOS
 
 @app.route('/articulos')
 def listar_articulos():
@@ -234,18 +229,10 @@ def nuevo_articulo():
         unidad_id = request.form['unidad_id']
         existencia = request.form['existencia']
         estado = request.form['estado']
-
-        nuevo = Articulo(
-            descripcion=descripcion,
-            marca=marca,
-            unidad_id=unidad_id,
-            existencia=existencia,
-            estado=estado
-        )
+        nuevo = Articulo(descripcion=descripcion, marca=marca, unidad_id=unidad_id, existencia=existencia, estado=estado)
         db.session.add(nuevo)
         db.session.commit()
         return redirect(url_for('listar_articulos'))
-
     return render_template('articulos_form.html', articulo=None, unidades=unidades)
 
 @app.route('/articulos/editar/<int:id>', methods=['GET', 'POST'])
@@ -273,8 +260,7 @@ def eliminar_articulo(id):
     db.session.commit()
     return redirect(url_for('listar_articulos'))
 
-
-# --------- RUTA LOGIN Y VERIFICACION CEDULA ---------
+# LOGIN
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -293,8 +279,6 @@ def login():
 def logout():
     session.pop('usuario', None)
     return redirect(url_for('login'))
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)
