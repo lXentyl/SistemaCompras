@@ -113,7 +113,7 @@ def index():
 @app.route("/enviar-ws")
 def enviar_ws():
     """
-    Ruta de prueba para enviar un asiento contable a WS PUBLICOS.
+
     ⚠️ Cambia auxiliar_id, cuenta_id y estado_id a los valores reales.
     """
     resultado = enviar_asiento_ws_publicos(
