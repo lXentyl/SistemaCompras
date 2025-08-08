@@ -23,25 +23,39 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-def enviar_asiento_ws_publicos(descripcion, auxiliar_id, cuenta_id, tipo_movimiento, fecha_asiento, monto_asiento, estado_id):
+def enviar_asiento_ws_publicos(descripcion, auxiliar_Id, cuenta_Id, tipoMovimiento, fechaAsiento, montoAsiento):
     """
-    Envía un asiento contable al WS con el formato correcto del Swagger.
+    Envía un asiento contable al WS PUBLICOS y devuelve el ID del asiento creado.
     """
     data = {
         "descripcion": descripcion,
-        "auxiliar_Id": auxiliar_id,
-        "cuenta_Id": cuenta_id,
-        "tipoMovimiento": tipo_movimiento,  # "DB" o "CR"
-        "fechaAsiento": fecha_asiento,      # formato YYYY-MM-DD
-        "montoAsiento": monto_asiento,
-        "estado_Id": estado_id
+        "auxiliar_Id": auxiliar_Id,
+        "cuenta_Id": cuenta_Id,
+        "tipoMovimiento": tipoMovimiento,  # "DB" o "CR"
+        "fechaAsiento": fechaAsiento,      # formato YYYY-MM-DD
+        "montoAsiento": montoAsiento
     }
+
+
     try:
-        r = requests.post(f"{BASE_URL}api/entradasContables", headers=HEADERS, json=data)
+        r = requests.post(f"{BASE_URL}api/public/entradas-contables", headers=HEADERS, json=data)
+
         r.raise_for_status()
-        return r.json()
+
+        response = r.json()
+        asiento_id = response.get("data", {}).get("id")  # 🔹 aquí obtenemos el id
+
+        return {
+            "status": "ok",
+            "asiento_id": asiento_id,
+            "respuesta_completa": response
+        }
     except requests.exceptions.RequestException as e:
-        return {"error": str(e), "detalle": r.text if 'r' in locals() else "No hubo respuesta"}
+        return {
+            "error": str(e),
+            "detalle": r.text if 'r' in locals() else "No hubo respuesta"
+        }
+
 
 # ======================
 # MODELOS
@@ -114,18 +128,18 @@ def index():
 def enviar_ws():
     """
 
-    ⚠️ Cambia auxiliar_id, cuenta_id y estado_id a los valores reales.
+    Endpoint para enviar un asiento contable al WS PUBLICOS.
     """
     resultado = enviar_asiento_ws_publicos(
         descripcion="Pago de servicio público",
-        auxiliar_id=1,       # <- Cambiar por ID real
-        cuenta_id=5,         # <- Cambiar por ID real de WS PUBLICOS
-        tipo_movimiento="DB",
-        fecha_asiento="2025-08-07",
-        monto_asiento=1500.00,
-        estado_id=1          # <- Cambiar por ID real
+        auxiliar_Id=7,
+        cuenta_Id=8,
+        tipoMovimiento="DB",
+        fechaAsiento="2025-08-07",
+        montoAsiento=1500
     )
     return jsonify(resultado)
+
 
 # CRUD DEPARTAMENTOS
 @app.route('/departamentos')
