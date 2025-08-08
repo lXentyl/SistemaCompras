@@ -1,19 +1,51 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import timedelta
+import requests
 
+# ======================
+# CONFIGURACIÓN APP
+# ======================
 app = Flask(__name__)
-
 app.secret_key = 'clave-ultra-secreta-123'
 app.permanent_session_lifetime = timedelta(minutes=30)
-
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/sistema'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db = SQLAlchemy(app)
 
-# MODELOS
+# ======================
+# CONFIGURACIÓN API CONTABLE
+# ======================
+API_KEY = "ak_live_de21c77b84b9535c004f8f6d61959cfe2aa1370565aa36ab"
+BASE_URL = "http://3.80.223.142:3001/"
+HEADERS = {
+    "x-api-key": API_KEY,
+    "Content-Type": "application/json"
+}
 
+def enviar_asiento_ws_publicos(descripcion, auxiliar_id, cuenta_id, tipo_movimiento, fecha_asiento, monto_asiento, estado_id):
+    """
+    Envía un asiento contable al WS con el formato correcto del Swagger.
+    """
+    data = {
+        "descripcion": descripcion,
+        "auxiliar_Id": auxiliar_id,
+        "cuenta_Id": cuenta_id,
+        "tipoMovimiento": tipo_movimiento,  # "DB" o "CR"
+        "fechaAsiento": fecha_asiento,      # formato YYYY-MM-DD
+        "montoAsiento": monto_asiento,
+        "estado_Id": estado_id
+    }
+    try:
+        r = requests.post(f"{BASE_URL}api/entradasContables", headers=HEADERS, json=data)
+        r.raise_for_status()
+        return r.json()
+    except requests.exceptions.RequestException as e:
+        return {"error": str(e), "detalle": r.text if 'r' in locals() else "No hubo respuesta"}
+
+# ======================
+# MODELOS
+# ======================
 class Departamento(db.Model):
     __tablename__ = 'departamentos'
     id = db.Column(db.Integer, primary_key=True)
@@ -49,8 +81,9 @@ class Usuario(db.Model):
     usuario = db.Column(db.String(50), nullable=False)
     clave = db.Column(db.String(100), nullable=False)
 
-# VALIDACION CEDULA
-
+# ======================
+# VALIDACIONES
+# ======================
 def validar_cedula(cedula: str) -> bool:
     cedula = cedula.replace("-", "").strip()
     if len(cedula) != 11 or not cedula.isdigit():
@@ -67,16 +100,34 @@ def validar_cedula(cedula: str) -> bool:
     resultado = (10 - (suma % 10)) % 10
     return resultado == verificador
 
-# RUTA PRINCIPAL
+# ======================
+# RUTAS
+# ======================
 
-@app.route('/')
+@app.route("/")
 def index():
     if 'usuario' not in session:
         return redirect(url_for('login'))
     return redirect(url_for('listar_departamentos'))
 
-# CRUD DEPARTAMENTOS
+@app.route("/enviar-ws")
+def enviar_ws():
+    """
+    Ruta de prueba para enviar un asiento contable a WS PUBLICOS.
+    ⚠️ Cambia auxiliar_id, cuenta_id y estado_id a los valores reales.
+    """
+    resultado = enviar_asiento_ws_publicos(
+        descripcion="Pago de servicio público",
+        auxiliar_id=1,       # <- Cambiar por ID real
+        cuenta_id=5,         # <- Cambiar por ID real de WS PUBLICOS
+        tipo_movimiento="DB",
+        fecha_asiento="2025-08-07",
+        monto_asiento=1500.00,
+        estado_id=1          # <- Cambiar por ID real
+    )
+    return jsonify(resultado)
 
+# CRUD DEPARTAMENTOS
 @app.route('/departamentos')
 def listar_departamentos():
     if 'usuario' not in session:
@@ -119,7 +170,6 @@ def eliminar_departamento(id):
     return redirect(url_for('listar_departamentos'))
 
 # CRUD PROVEEDORES
-
 @app.route('/proveedores')
 def listar_proveedores():
     if 'usuario' not in session:
@@ -167,7 +217,6 @@ def eliminar_proveedor(id):
     return redirect(url_for('listar_proveedores'))
 
 # CRUD UNIDADES
-
 @app.route('/unidades')
 def listar_unidades():
     if 'usuario' not in session:
@@ -210,7 +259,6 @@ def eliminar_unidad(id):
     return redirect(url_for('listar_unidades'))
 
 # CRUD ARTICULOS
-
 @app.route('/articulos')
 def listar_articulos():
     if 'usuario' not in session:
@@ -261,7 +309,6 @@ def eliminar_articulo(id):
     return redirect(url_for('listar_articulos'))
 
 # LOGIN
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -280,5 +327,6 @@ def logout():
     session.pop('usuario', None)
     return redirect(url_for('login'))
 
+# MAIN
 if __name__ == '__main__':
     app.run(debug=True)
