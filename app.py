@@ -124,21 +124,28 @@ def index():
         return redirect(url_for('login'))
     return redirect(url_for('listar_departamentos'))
 
-@app.route("/enviar-ws")
+@app.route("/enviar-ws", methods=["GET", "POST"])
 def enviar_ws():
-    """
+    resultado = None
 
-    Endpoint para enviar un asiento contable al WS PUBLICOS.
-    """
-    resultado = enviar_asiento_ws_publicos(
-        descripcion="Pago de servicio público",
-        auxiliar_Id=7,
-        cuenta_Id=8,
-        tipoMovimiento="DB",
-        fechaAsiento="2025-08-07",
-        montoAsiento=1500
-    )
-    return jsonify(resultado)
+    if request.method == "POST":
+        descripcion = request.form["descripcion"]
+        tipoMovimiento = request.form["tipoMovimiento"]
+        fechaAsiento = request.form["fechaAsiento"]
+        montoAsiento = request.form["montoAsiento"]
+
+        # 🔹 Usamos valores fijos para auxiliar_Id y cuenta_Id
+        resultado = enviar_asiento_ws_publicos(
+            descripcion,
+            auxiliar_Id=7,  # fijo
+            cuenta_Id=8,    # fijo
+            tipoMovimiento=tipoMovimiento,
+            fechaAsiento=fechaAsiento,
+            montoAsiento=montoAsiento
+        )
+
+    return render_template("enviar_ws.html", resultado=resultado)
+
 
 
 # CRUD DEPARTAMENTOS
